@@ -22,8 +22,21 @@ def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) 
     Returns:
         An approximation of $f'_i(x_0, \ldots, x_{n-1})$
     """
-    # TODO: Implement for Task 1.1.
-    raise NotImplementedError('Need to implement for Task 1.1')
+    # n元函数f的求导: df/dx_i = (f(x1, ..., x_i + e, ..., x_n-1) - f(x1, ..., x_i, ..., x_n-1)) / e
+    # 中心差分所以是 (f(x + h) - f(x - h)) / 2h
+    valsAdd: Tuple = ()
+    valsSub: Tuple = ()
+    for i in range(len(vals)):
+        if i == arg:
+            valsAdd += (vals[i] + epsilon,)
+            valsSub += (vals[i] - epsilon,)
+        else:
+            valsAdd += (vals[i],)
+            valsSub += (vals[i],)
+    assert len(valsAdd) == len(vals) and len(valsSub) == len(vals)
+    # 这里解包*才是传入n个参数, 否则是传入一个元组
+    return (f(*valsAdd) - f(*valsSub)) / (2 * epsilon)
+
 
 
 variable_count = 1
