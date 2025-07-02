@@ -1,0 +1,4 @@
+conda create -n myminitorch python==3.11
+官方setup给的requirements有conflict，参考了pr里的requirements
+pip install -r requirements.txt
+pip install -Ue .
