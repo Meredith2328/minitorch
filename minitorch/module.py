@@ -26,18 +26,20 @@ class Module:
 
     def modules(self) -> Sequence[Module]:
         "Return the direct child modules of this module."
-        m: Dict[str, Module] = self.__dict__["_modules"]
+        m: Dict[str, Module] = self.__dict__["_modules"] # 备注: 可以拿到self.a的'a'之类的
         return list(m.values())
 
     def train(self) -> None:
         "Set the mode of this module and all descendent modules to `train`."
-        # TODO: Implement for Task 0.4.
-        raise NotImplementedError('Need to implement for Task 0.4')
+        self.training = True
+        for e in self.modules():
+            e.train()
 
     def eval(self) -> None:
         "Set the mode of this module and all descendent modules to `eval`."
-        # TODO: Implement for Task 0.4.
-        raise NotImplementedError('Need to implement for Task 0.4')
+        self.training = False
+        for e in self.modules():
+            e.eval()
 
     def named_parameters(self) -> Sequence[Tuple[str, Parameter]]:
         """
@@ -47,13 +49,24 @@ class Module:
         Returns:
             The name and `Parameter` of each ancestor parameter.
         """
-        # TODO: Implement for Task 0.4.
-        raise NotImplementedError('Need to implement for Task 0.4')
+        # crawl over recursively
+        result: Sequence = []
+        for paraPair in self._parameters.items(): # Tuple[str, Parameter]
+            result.append(paraPair)
+        for moduleName, module in self._modules.items():
+            for name, para in module.named_parameters():
+                result.append((moduleName + '.' + name, para))
+        return result
+        
 
     def parameters(self) -> Sequence[Parameter]:
         "Enumerate over all the parameters of this module and its descendents."
-        # TODO: Implement for Task 0.4.
-        raise NotImplementedError('Need to implement for Task 0.4')
+        result: Sequence = []
+        for _, para in self._parameters.items(): # Tuple[str, Parameter]
+            result.append(para)
+        for _, module in self._modules.items():
+            result.extend(module.parameters())
+        return result
 
     def add_parameter(self, k: str, v: Any) -> Parameter:
         """

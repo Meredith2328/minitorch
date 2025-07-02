@@ -2,3 +2,7 @@ conda create -n myminitorch python==3.11
 官方setup给的requirements有conflict，参考了pr里的requirements
 pip install -r requirements.txt
 pip install -Ue .
+之后发现torch版本很新、自动装的2.0的numpy不兼容，手动降级一下：
+pip install numpy==1.24
+以及跑Task0.5出了一些id重复的报错，判断是Streamlit版本新了一点加了检查，为了省去改代码的麻烦手动降级一下：
+pip install streamlit==1.26.0
