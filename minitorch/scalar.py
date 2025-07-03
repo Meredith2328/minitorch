@@ -158,13 +158,16 @@ class Scalar:
         return self.history.inputs
 
     def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]:
+        '''计算对所有变量的偏导数, 并将它们与对应变量配对返回。'''
         h = self.history
         assert h is not None
         assert h.last_fn is not None
         assert h.ctx is not None
-
-        # TODO: Implement for Task 1.3.
-        raise NotImplementedError('Need to implement for Task 1.3')
+        
+        derivatives: Tuple[float, ...] = h.last_fn._backward(h.ctx, d_output) # Tuple[float, ...] 得到了对每个输入变量的偏导
+        variables: Sequence[Scalar] = h.inputs
+        return zip(variables, derivatives)
+        
 
     def backward(self, d_output: Optional[float] = None) -> None:
         """

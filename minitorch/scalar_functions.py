@@ -86,14 +86,15 @@ class Log(ScalarFunction):
 
     @staticmethod
     def forward(ctx: Context, a: float) -> float:
+        '''保存a, 计算log(a)并返回'''
         ctx.save_for_backward(a)
         return operators.log(a)
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> float:
+        '''取出保存的a, 根据传回的d_output, 计算d_output/a并返回, 即d_output f\'(x)'''
         (a,) = ctx.saved_values
         return operators.log_back(a, d_output)
-
 
 # To implement.
 
