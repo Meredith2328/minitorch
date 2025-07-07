@@ -74,8 +74,19 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     Returns:
         Non-constant Variables in topological order starting from the right.
     """
-    # TODO: Implement for Task 1.4.
-    raise NotImplementedError('Need to implement for Task 1.4')
+    visited = set()
+    order = []
+
+    def dfs(node: Variable):
+        if node.unique_id in visited:
+            return
+        visited.add(node.unique_id)
+        for parent in node.parents:
+            dfs(parent)
+        order.append(node) # 这里生成正拓扑排序
+        
+    dfs(variable)
+    return order[::-1]
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
@@ -89,8 +100,21 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
 
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
-    # TODO: Implement for Task 1.4.
-    raise NotImplementedError('Need to implement for Task 1.4')
+    sorted_vars_order: Iterable[Variable] = topological_sort(variable)
+    deriv_dict = {variable.unique_id: deriv} # Var -> derivative, 注意unhashable所以要用unique_id
+    for var in sorted_vars_order:
+        d_out = deriv_dict.get(var.unique_id, None)
+        if (var.is_leaf()):
+            var.accumulate_derivative(d_out) # 可以从单节点图来得到上面这段逻辑
+        else:
+            for parent, d_parent in var.chain_rule(d_out):
+                if (parent.unique_id not in deriv_dict):
+                    deriv_dict[parent.unique_id] = d_parent
+                else:
+                    deriv_dict[parent.unique_id] += d_parent
+            
+
+
 
 
 @dataclass

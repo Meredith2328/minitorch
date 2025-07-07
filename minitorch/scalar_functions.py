@@ -78,6 +78,7 @@ class Add(ScalarFunction):
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> Tuple[float, ...]:
+        '''z = a + b分别对a和b的偏导是1和1, 再各自乘上d_output'''
         return d_output, d_output
 
 
@@ -92,7 +93,7 @@ class Log(ScalarFunction):
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> float:
-        '''取出保存的a, 根据传回的d_output, 计算d_output/a并返回, 即d_output f\'(x)'''
+        '''取出保存的a, 根据传回的d_output, 计算d_output / f\'(x)并返回, 即d_output / a'''
         (a,) = ctx.saved_values
         return operators.log_back(a, d_output)
 
@@ -104,12 +105,14 @@ class Mul(ScalarFunction):
 
     @staticmethod
     def forward(ctx: Context, a: float, b: float) -> float:
+        ctx.save_for_backward(a, b)
         return operators.mul(a, b)
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> Tuple[float, float]:
-        # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
+        '''z = a * b 分别对a和b的偏导是b和a'''
+        (a, b) = ctx.saved_values
+        return d_output * b, d_output * a
 
 
 class Inv(ScalarFunction):
@@ -117,12 +120,13 @@ class Inv(ScalarFunction):
 
     @staticmethod
     def forward(ctx: Context, a: float) -> float:
+        ctx.save_for_backward(a)
         return operators.inv(a)
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> float:
-        # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
+        (x,) = ctx.saved_values
+        return operators.inv_back(x, d_output)
 
 
 class Neg(ScalarFunction):
@@ -130,14 +134,13 @@ class Neg(ScalarFunction):
 
     @staticmethod
     def forward(ctx: Context, a: float) -> float:
-        # print('type of a here is ', type(a))
-        # print('type of neg(a) here is ', type(operators.neg(a)))
-        return operators.neg(a) # 这里需要强制加个转换, 好奇怪
+        # print('type of a here is ', type(a)) # DEBUG
+        # print('type of neg(a) here is ', type(operators.neg(a))) # DEBUG
+        return operators.neg(a)
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> float:
-        # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
+        return -d_output
 
 
 class Sigmoid(ScalarFunction):
@@ -145,12 +148,13 @@ class Sigmoid(ScalarFunction):
 
     @staticmethod
     def forward(ctx: Context, a: float) -> float:
+        ctx.save_for_backward(a)
         return operators.sigmoid(a)
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> float:
-        # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
+        (a,) = ctx.saved_values
+        return d_output * operators.sigmoid(a) * (1 - operators.sigmoid(a))
 
 
 class ReLU(ScalarFunction):
@@ -158,12 +162,13 @@ class ReLU(ScalarFunction):
 
     @staticmethod
     def forward(ctx: Context, a: float) -> float:
+        ctx.save_for_backward(a)
         return operators.relu(a)
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> float:
-        # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
+        (x,) = ctx.saved_values
+        return operators.relu_back(x, d_output)
 
 
 class Exp(ScalarFunction):
@@ -171,12 +176,14 @@ class Exp(ScalarFunction):
 
     @staticmethod
     def forward(ctx: Context, a: float) -> float:
+        ctx.save_for_backward(a)
         return operators.exp(a)
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> float:
-        # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
+        '''z = exp(a) 对 a 的导数是 exp(a)'''
+        (a,) = ctx.saved_values
+        return d_output * operators.exp(a)
 
 
 class LT(ScalarFunction):
@@ -188,8 +195,8 @@ class LT(ScalarFunction):
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> Tuple[float, float]:
-        # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
+        '''z = 1和z = 0对x和y的偏导数都是0吧'''
+        return 0, 0
 
 
 class EQ(ScalarFunction):
@@ -201,5 +208,5 @@ class EQ(ScalarFunction):
 
     @staticmethod
     def backward(ctx: Context, d_output: float) -> Tuple[float, float]:
-        # TODO: Implement for Task 1.4.
-        raise NotImplementedError('Need to implement for Task 1.4')
+        '''z = 1和z = 0对x和y的偏导数都是0吧'''
+        return 0, 0
