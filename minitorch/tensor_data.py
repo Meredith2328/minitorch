@@ -43,8 +43,15 @@ def index_to_position(index: Index, strides: Strides) -> int:
         Position in storage
     """
 
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError('Need to implement for Task 2.1')
+    # fast indexing: 利用strides, 把元组形式的 index 转化为一维数组的下标
+    # 例如步长为(5, 1), 我们的storage有15个元素, 
+    # 那么传入index = (1, 0)时, 下标就应该是 5*1+1*0 (直观理解为dim1的5步走了1次)
+    # 传入index = (1, 2)时, 下标就应该是 5*1+1*2 (直观理解为dim1的5步走了1次, dim2的1步走了2次)
+    sum: int = 0
+    for i in range(len(index)):
+        sum += index[i] * strides[i]
+    return sum
+
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
@@ -60,8 +67,17 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index : return index corresponding to position.
 
     """
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError('Need to implement for Task 2.1')
+    # 用于tensor_data的indices方法, 从ordinal \in {0, ..., size - 1}
+    # 到index, 比如输出 (0, 0), (0, 1), ..., (2, 4)的某一个
+
+    # 0->(0,0) 5->(1,0) 10->(2,0) 14->(2,4), 当 shape=(3,5)
+    # 0->(0,0,0) 3->(0,0,3) 4->(0,1,0) 12->(1,0,0) 当shape=(2,3,4)
+    # out_index[-1] = ordinal % shape[-1]  
+    # out_index[-2] = ordinal // shape[-1] % shape[-2]
+    # out_index[-3] = ordinal // shape[-1] // shape[-2] % shape[-3]
+    for i in range(len(shape) - 1, -1, -1): # 倒序
+        out_index[i] = ordinal % shape[i]
+        ordinal = ordinal // shape[i]
 
 
 def broadcast_index(
@@ -155,6 +171,7 @@ class TensorData:
     def is_contiguous(self) -> bool:
         """
         Check that the layout is contiguous, i.e. outer dimensions have bigger strides than inner dimensions.
+        strides降序
 
         Returns:
             bool : True if contiguous
@@ -226,9 +243,7 @@ class TensorData:
         assert list(sorted(order)) == list(
             range(len(self.shape))
         ), f"Must give a position to each dimension. Shape: {self.shape} Order: {order}"
-
-        # TODO: Implement for Task 2.1.
-        raise NotImplementedError('Need to implement for Task 2.1')
+        return TensorData(self._storage, tuple([self.shape[i] for i in order]), tuple([self.strides[i] for i in order]))
 
     def to_string(self) -> str:
         s = ""

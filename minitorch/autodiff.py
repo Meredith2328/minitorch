@@ -101,7 +101,7 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
     sorted_vars_order: Iterable[Variable] = topological_sort(variable)
-    deriv_dict = {variable.unique_id: deriv} # Var -> derivative, 注意unhashable所以要用unique_id
+    deriv_dict = {variable.unique_id: deriv} # Var -> derivative, 默认传入了1.0, 注意unhashable所以要用unique_id
     for var in sorted_vars_order:
         d_out = deriv_dict.get(var.unique_id, None)
         if (var.is_leaf()):
