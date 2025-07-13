@@ -47,10 +47,12 @@ def index_to_position(index: Index, strides: Strides) -> int:
     # 例如步长为(5, 1), 我们的storage有15个元素, 
     # 那么传入index = (1, 0)时, 下标就应该是 5*1+1*0 (直观理解为dim1的5步走了1次)
     # 传入index = (1, 2)时, 下标就应该是 5*1+1*2 (直观理解为dim1的5步走了1次, dim2的1步走了2次)
-    sum: int = 0
+
+    # position = index dot strides
+    position: int = 0
     for i in range(len(index)):
         sum += index[i] * strides[i]
-    return sum
+    return position
 
 
 
@@ -78,7 +80,11 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
     for i in range(len(shape) - 1, -1, -1): # 倒序
         out_index[i] = ordinal % shape[i]
         ordinal = ordinal // shape[i]
-
+    # 在学习了stride之后可以有直觉的理解:
+    # ordinal是向strides的各个方向走了index步得到的,
+    # 那么对于"最精细"(strides最右侧)的小步子走了多少? (对最右侧shape的直接取模)
+    # 在不考虑小步子(直接整体整除strides最右侧), 稍微粗一点的步子走了多少? (对第二个shape的取模)
+    # storage[s1 * index1 + s2 * index2 + s3 * index3 ... ]
 
 def broadcast_index(
     big_index: Index, big_shape: Shape, shape: Shape, out_index: OutIndex
@@ -99,8 +105,16 @@ def broadcast_index(
     Returns:
         None
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError('Need to implement for Task 2.2')
+    # eg. big_shape = (2, 3, 4), shape = (3, 4), big_index = (1, 2, 3)
+    # -> out_index = (2, 3), 即去掉最外层值为1的维度, 保留内层
+    shape_broadcast(shape, big_shape) # Check indexing error
+    for i in range(len(shape) - 1, -1, -1):
+        # big_index和index都从最右往左对齐
+        dimension = i + len(big_shape) - len(shape)
+        if big_shape[dimension] == 1:
+            out_index[i] = 0
+        else:
+            out_index[i] = big_index[dimension]
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
@@ -117,8 +131,17 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     Raises:
         IndexingError : if cannot broadcast
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError('Need to implement for Task 2.2')
+    shape: UserShape = ()
+    if (len(shape1) < len(shape2)):
+        shape1 = (1,) * (len(shape2) - len(shape1)) + shape1
+    if (len(shape2) < len(shape1)):
+        shape2 = (1,) * (len(shape1) - len(shape2)) + shape2
+    for i in range(len(shape1)):
+        if (min(shape1[i], shape2[i]) == 1 or shape1[i] == shape2[i]):
+            shape += (max(shape1[i], shape2[i]),)
+        else:
+            raise IndexingError()
+    return shape
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:

@@ -119,6 +119,19 @@ def test_shape_broadcast() -> None:
     c = minitorch.shape_broadcast((2, 5), (5,))
     assert c == (2, 5)
 
+import numpy as np
+import numpy.typing as npt
+from numpy import array
+from typing_extensions import TypeAlias
+OutIndex: TypeAlias = npt.NDArray[np.int32]
+@pytest.mark.task2_2
+def test_broadcast_index() -> None:
+    '''发现这框架怎么没检查这个函数, 遂手动加了个test'''
+    out_index: OutIndex = array((3, 4))
+    minitorch.broadcast_index((1, 2, 3), (2, 3, 4), (3, 4), out_index) 
+    # numpy数组可变, 所以直接传入参数就能改变
+    # print(out_index)
+    assert np.equal(out_index, (2, 3)).all()
 
 @given(tensor_data())
 def test_string(tensor_data: TensorData) -> None:
