@@ -264,8 +264,29 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError('Need to implement for Task 2.3')
+        # 我怎么感觉这一步工作量有点大,
+        # 理解下来先要把shape扩展(包括1扩展和添1扩展)
+        # 然后对于每次扩展都要把函数映射多次
+
+        # 实现: 对out_size这么多个pos, 
+        # 每个pos唯一对应一个映射, 执行一次fn
+        # 每个映射的 in_index 和 out_index 均由pos得到
+        out_size = 1
+        for dim in out_shape:
+            out_size *= dim
+        
+        out_index = [0] * len(out_shape)
+        in_index = [0] * len(in_shape)
+
+        for i in range(out_size):
+            # 获得out_index, i -> out_index
+            to_index(i, out_shape, out_index) 
+            # 获得in_index, out_index -> in_index
+            broadcast_index(out_index, out_shape, in_shape, in_index)
+            # 拿到out_index和in_index了, 对内部存储执行fn
+            out_pos = index_to_position(out_index, out_strides)
+            in_pos = index_to_position(in_index, in_strides)
+            out[out_pos] = fn(in_storage[in_pos])
 
     return _map
 
@@ -309,8 +330,22 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError('Need to implement for Task 2.3')
+        # 跟map差不多
+        out_size = 1
+        for dim in out_shape:
+            out_size *= dim
+        out_index = [0] * len(out_shape)
+        a_index = [0] * len(a_shape)
+        b_index = [0] * len(b_shape)
+        for i in range(out_size):
+            # 先拿到out_index, 再broadcast到a和b两个index
+            to_index(i, out_shape, out_index)
+            broadcast_index(out_index, out_shape, a_shape, a_index)
+            broadcast_index(out_index, out_shape, b_shape, b_index)
+            out_pos = index_to_position(out_index, out_strides)
+            a_pos = index_to_position(a_index, a_strides)
+            b_pos = index_to_position(b_index, b_strides)
+            out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
 
     return _zip
 
@@ -340,8 +375,40 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError('Need to implement for Task 2.3')
+        ## For reference
+        # def reducer(ls: Iterable[float]):
+        #     nonlocal start # 不然有UnboundLocalError
+        #     for e in ls:
+        #         start = fn(e, start) # start结果在右侧
+        #     return start
+
+        # ps. out不大于a, 所以不会重复执行
+
+        out_size = 1
+        for dim in out_shape:
+            out_size *= dim
+
+        out_index = [0] * len(out_shape)
+        a_index = [0] * len(a_shape)
+
+        reduce_size = a_shape[reduce_dim]
+
+        for i in range(out_size):
+            # 获得out_index
+            to_index(i, out_shape, out_index) 
+            # 获得a_index
+            broadcast_index(out_index, out_shape, a_shape, a_index)
+            # 初始化为第一个元素并开始执行
+            a_index[reduce_dim] = 0
+            start_pos = index_to_position(a_index, a_strides)
+            result = a_storage[start_pos]
+            for j in range(1, reduce_size):
+                a_index[reduce_dim] = j
+                pos = index_to_position(a_index, a_strides)
+                result = fn(result, a_storage[pos])
+            # 写入out
+            out_pos = index_to_position(out_index, out_strides)
+            out[out_pos] = result
 
     return _reduce
 
