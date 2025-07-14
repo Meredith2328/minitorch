@@ -51,7 +51,7 @@ def index_to_position(index: Index, strides: Strides) -> int:
     # position = index dot strides
     position: int = 0
     for i in range(len(index)):
-        sum += index[i] * strides[i]
+        position += index[i] * strides[i]
     return position
 
 
@@ -105,13 +105,13 @@ def broadcast_index(
     Returns:
         None
     """
-    # eg. big_shape = (2, 3, 4), shape = (3, 4), big_index = (1, 2, 3)
-    # -> out_index = (2, 3), 即去掉最外层值为1的维度, 保留内层
-    shape_broadcast(shape, big_shape) # Check indexing error
+    # eg. big_shape = (2, 3, 4), shape = (3, 4), 
+    # big_index = (1, 2, 3) -> out_index = (2, 3), 
+    # 即去掉最外层值为1的维度, 保留内层
     for i in range(len(shape) - 1, -1, -1):
         # big_index和index都从最右往左对齐
         dimension = i + len(big_shape) - len(shape)
-        if big_shape[dimension] == 1:
+        if big_shape[dimension] == 1 or shape[i] == 1:
             out_index[i] = 0
         else:
             out_index[i] = big_index[dimension]
@@ -133,9 +133,9 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     """
     shape: UserShape = ()
     if (len(shape1) < len(shape2)):
-        shape1 = (1,) * (len(shape2) - len(shape1)) + shape1
+        shape1 = (1,) * (len(shape2) - len(shape1)) + tuple(shape1)
     if (len(shape2) < len(shape1)):
-        shape2 = (1,) * (len(shape1) - len(shape2)) + shape2
+        shape2 = (1,) * (len(shape1) - len(shape2)) + tuple(shape2)
     for i in range(len(shape1)):
         if (min(shape1[i], shape2[i]) == 1 or shape1[i] == shape2[i]):
             shape += (max(shape1[i], shape2[i]),)

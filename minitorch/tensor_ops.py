@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Callable, Optional, Type
 
 import numpy as np
 from typing_extensions import Protocol
-
+from numpy import array
 from . import operators
 from .tensor_data import (
     MAX_DIMS,
@@ -275,8 +275,8 @@ def tensor_map(
         for dim in out_shape:
             out_size *= dim
         
-        out_index = [0] * len(out_shape)
-        in_index = [0] * len(in_shape)
+        out_index = array([0] * len(out_shape))
+        in_index = array([0] * len(in_shape))
 
         for i in range(out_size):
             # 获得out_index, i -> out_index
@@ -334,13 +334,14 @@ def tensor_zip(
         out_size = 1
         for dim in out_shape:
             out_size *= dim
-        out_index = [0] * len(out_shape)
-        a_index = [0] * len(a_shape)
-        b_index = [0] * len(b_shape)
+        out_index = array([0] * len(out_shape))
+        a_index = array([0] * len(a_shape))
+        b_index = array([0] * len(b_shape))
         for i in range(out_size):
             # 先拿到out_index, 再broadcast到a和b两个index
             to_index(i, out_shape, out_index)
             broadcast_index(out_index, out_shape, a_shape, a_index)
+            # breakpoint()
             broadcast_index(out_index, out_shape, b_shape, b_index)
             out_pos = index_to_position(out_index, out_strides)
             a_pos = index_to_position(a_index, a_strides)
@@ -388,8 +389,8 @@ def tensor_reduce(
         for dim in out_shape:
             out_size *= dim
 
-        out_index = [0] * len(out_shape)
-        a_index = [0] * len(a_shape)
+        out_index = array([0] * len(out_shape))
+        a_index = array([0] * len(a_shape))
 
         reduce_size = a_shape[reduce_dim]
 
