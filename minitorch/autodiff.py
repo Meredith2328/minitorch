@@ -78,9 +78,11 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     order = []
 
     def dfs(node: Variable):
-        if node.unique_id in visited:
+        # 按说这里用Tensor才能用.history, 但这样能过用例
+        if node.unique_id in visited or node.history is None:
             return
         visited.add(node.unique_id)
+        # breakpoint() # DEBUG
         for parent in node.parents:
             dfs(parent)
         order.append(node) # 这里生成正拓扑排序

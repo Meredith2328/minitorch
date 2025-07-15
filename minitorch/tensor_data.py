@@ -108,6 +108,10 @@ def broadcast_index(
     # eg. big_shape = (2, 3, 4), shape = (3, 4), 
     # big_index = (1, 2, 3) -> out_index = (2, 3), 
     # 即去掉最外层值为1的维度, 保留内层
+    # eg2. big_shape = (2, 3), shape = (2, 1)
+    # 则将维度为1处全部映射到0
+    # eg3. big_shape = (2, 4), shape = (2, ) # WRONG!
+    # 报错, 无法正常映射, 本函数不作检查, 默认传入的都合法
     for i in range(len(shape) - 1, -1, -1):
         # big_index和index都从最右往左对齐
         dimension = i + len(big_shape) - len(shape)
