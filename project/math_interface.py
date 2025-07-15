@@ -53,7 +53,8 @@ def render_math_sandbox(use_scalar=False, use_tensor=False):
                 else:
                     out.backward()
             if use_tensor:
-                scatter = go.Scatter(mode="lines", x=xs, y=[x.grad[0] for x in x_var])
+                # scatter = go.Scatter(mode="lines", x=xs, y=[x.grad[0] for x in x_var])
+                scatter = go.Scatter(mode="lines", x=xs, y=[x.grad.item() for x in x_var]) # TODO
             else:
                 scatter = go.Scatter(
                     mode="lines", x=xs, y=[x.derivative for x in x_var]

@@ -1,3 +1,4 @@
+# Merged pull request in "Module 2 Fixes #23"
 import networkx as nx
 
 import minitorch
@@ -44,7 +45,8 @@ class GraphBuilder:
         self.intermediates = {}
 
     def get_name(self, x):
-        if not isinstance(x, Scalar) and not isinstance(x, minitorch.Tensor):
+        # if not isinstance(x, Scalar) and not isinstance(x, minitorch.Tensor):
+        if not isinstance(x, minitorch.Tensor):
             return "constant %s" % (x,)
         elif len(x.name) > 15:
             if x.name in self.intermediates:
@@ -77,7 +79,8 @@ class GraphBuilder:
                     G.add_edge(self.get_name(input), op, f"{i}")
 
                 for input in cur.history.inputs:
-                    if not isinstance(input, Scalar) and not isinstance(
+                    # if not isinstance(input, Scalar) and not isinstance(
+                    if not isinstance(
                         input, minitorch.Tensor
                     ):
                         continue
