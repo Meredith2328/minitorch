@@ -3,7 +3,7 @@ colorama==0.4.6
 datasets==2.21.0
 embeddings==0.0.8
 hypothesis==6.111.2
-importlib-metadata==8.0.0
+importlib-metadata==6.11.0
 importlib-resources==6.4.0
 jaraco.text==3.12.1
 mypy==1.11.2

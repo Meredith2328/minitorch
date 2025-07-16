@@ -69,9 +69,9 @@ def sigmoid(x: float) -> float:
     """
     # return 1.0 / (1.0 + exp(-x)) # naive 
     if x >= 0:
-        return 1.0 / (1.0 + exp(-x))
+        return 1.0 / (1.0 + math.exp(-x))
     else:
-        return exp(x) / (1.0 + exp(x))
+        return math.exp(x) / (1.0 + math.exp(x))
 
 def relu(x: float) -> float:
     """
@@ -99,7 +99,7 @@ def exp(x: float) -> float:
 
 def log_back(x: float, d: float) -> float:
     r"If $f = log$ as above, compute $d \times f'(x)$"
-    return d * inv(x)
+    return d / x
 
 def inv(x: float) -> float:
     "$f(x) = 1/x$"
@@ -108,12 +108,12 @@ def inv(x: float) -> float:
 def inv_back(x: float, d: float) -> float:
     r"If $f(x) = 1/x$ compute $d \times f'(x)$"
     # - d / x^2
-    return -d * inv(x) * inv(x)
+    return -d / x / x
 
 def relu_back(x: float, d: float) -> float:
     r"If $f = relu$ compute $d \times f'(x)$"
     # f'(x) = 0 if x < 0 else 1
-    if lt(x, 0):
+    if x <= 0:
         return 0.0
     else:
         return d # d * 1.0

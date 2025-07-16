@@ -150,7 +150,6 @@ def tensor_map(
     Returns:
         Tensor map function.
     """
-
     def _map(
         out: Storage,
         out_shape: Shape,
@@ -159,8 +158,25 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 3.1.
-        raise NotImplementedError('Need to implement for Task 3.1')
+        # 3. stride-aligned, 快速路径
+        if (
+            len(out_shape) == len(in_shape) and
+            (out_shape == in_shape).all() and
+            (out_strides == in_strides).all()
+        ):
+            for i in prange(len(out)): # 1. parallel
+                out[i] = fn(in_storage[i])
+        else:
+            # 2. ndarray
+            for out_i in prange(len(out)): # 1. parallel
+                # 不要把out_index和in_index拿出循环, 不然会race
+                out_index = np.empty(len(out_shape), dtype=np.int32)
+                in_index = np.empty(len(in_shape), dtype=np.int32)
+                to_index(out_i, out_shape, out_index)
+                broadcast_index(out_index, out_shape, in_shape, in_index)
+                out_pos = index_to_position(out_index, out_strides)
+                in_pos = index_to_position(in_index, in_strides)
+                out[out_pos] = fn(in_storage[in_pos])
 
     return njit(parallel=True)(_map)  # type: ignore
 
@@ -198,8 +214,29 @@ def tensor_zip(
         b_shape: Shape,
         b_strides: Strides,
     ) -> None:
-        # TODO: Implement for Task 3.1.
-        raise NotImplementedError('Need to implement for Task 3.1')
+        # 3. stride-aligned, 快速路径
+        if (
+            (len(out_shape) == len(a_shape) == len(b_shape)) and
+            (out_shape == a_shape).all() and
+            (out_shape == b_shape).all() and
+            (out_strides == a_strides).all() and
+            (out_strides == b_strides).all()
+        ):
+            for i in prange(len(out)): # 1. parallel
+                out[i] = fn(a_storage[i], b_storage[i])
+        else:
+            for out_i in prange(len(out)): # 1. parallel
+                out_index = np.empty(len(out_shape), dtype=np.int32)
+                a_index = np.empty(len(a_shape), dtype=np.int32)
+                b_index = np.empty(len(b_shape), dtype=np.int32)
+                # 2. ndarray
+                to_index(out_i, out_shape, out_index)
+                broadcast_index(out_index, out_shape, a_shape, a_index)
+                broadcast_index(out_index, out_shape, b_shape, b_index)
+                out_pos = index_to_position(out_index, out_strides)
+                a_pos = index_to_position(a_index, a_strides)
+                b_pos = index_to_position(b_index, b_strides)
+                out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
 
     return njit(parallel=True)(_zip)  # type: ignore
 
@@ -232,8 +269,26 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # TODO: Implement for Task 3.1.
-        raise NotImplementedError('Need to implement for Task 3.1')
+        reduce_size = a_shape[reduce_dim] # 不写入所以可以放在外面
+        for i in prange(len(out)): # 外层并行
+            out_index = np.empty(len(out_shape), dtype=np.int32)
+            a_index = np.empty(len(a_shape), dtype=np.int32)
+            # 初始化out_index
+            to_index(i, out_shape, out_index) 
+            out_pos = index_to_position(out_index, out_strides)
+
+            # 初始化a_index及result
+            broadcast_index(out_index, out_shape, a_shape, a_index)
+            a_index[reduce_dim] = 0
+            start_pos = index_to_position(a_index, a_strides)
+            result = a_storage[start_pos]
+
+            # 计算reduce
+            for j in range(1, reduce_size): # 内层互相依赖不并行
+                a_index[reduce_dim] = j
+                pos = index_to_position(a_index, a_strides)
+                result = fn(result, a_storage[pos])
+            out[out_pos] = result
 
     return njit(parallel=True)(_reduce)  # type: ignore
 

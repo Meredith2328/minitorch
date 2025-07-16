@@ -6,3 +6,6 @@ pip install -Ue .
 pip install numpy==1.24
 以及跑Task0.5出了一些id重复的报错，判断是Streamlit版本新了一点加了检查，为了省去改代码的麻烦手动降级一下：
 pip install streamlit==1.26.0
+
+之后做到Efficiency(Task3那些)要用CUDA，我本地机CUDA==12.6，所以参考了pytorch官网的指令在环境里装gpu的pytorch：
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
