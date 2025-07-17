@@ -337,8 +337,28 @@ def _tensor_matrix_multiply(
     a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
 
-    # TODO: Implement for Task 3.2.
-    raise NotImplementedError('Need to implement for Task 3.2')
+    assert a_shape[-1] == b_shape[-2]
+    # 按照2 x 4 \times 4 x 3思考, out_shape就是2 x 3
+    # 另外其实batched只是多个n, 变成out[n, i, j] += a[n, i, k] * b[n, k, j], 参考matrix_multiply函数
+    for out_i in prange(len(out)):
+        # 老规矩, 遍历结果矩阵index, 先从out_i得到out_index, a_index, b_index
+        out_index = np.empty(len(out_shape), dtype=np.int32)
+        a_index = np.empty(len(a_shape), dtype=np.int32)
+        b_index = np.empty(len(b_shape), dtype=np.int32)
+        to_index(out_i, out_shape, out_index)
+        broadcast_index(out_index, out_shape, a_shape, a_index)
+        broadcast_index(out_index, out_shape, b_shape, b_index)
+
+        # 矩阵乘法实现
+        # out[i, j] += a[i, k] * b[k, j] (k = 0, 1, ..., shape - 1), shape = a_shape[-1] = b_shape[-2]
+        # 即out[i, j] = sum_k (a[i, k] * b[k, j])
+        # 所以for k一下就好
+        result = 0
+        for k in range(a_shape[-1]):
+            a_index[-1] = k
+            b_index[-2] = k
+            result += a_storage[index_to_position(a_index, a_strides)] * b_storage[index_to_position(b_index, b_strides)]
+        out[out_i] = result
 
 
 tensor_matrix_multiply = njit(parallel=True, fastmath=True)(_tensor_matrix_multiply)
