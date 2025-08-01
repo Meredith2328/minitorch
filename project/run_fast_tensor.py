@@ -6,7 +6,8 @@ import minitorch
 
 datasets = minitorch.datasets
 FastTensorBackend = minitorch.TensorBackend(minitorch.FastOps)
-if numba.cuda.is_available():
+from numba import cuda
+if cuda.gpus:
     GPUBackend = minitorch.TensorBackend(minitorch.CudaOps)
 
 
