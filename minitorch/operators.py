@@ -186,7 +186,9 @@ def reduce(
          fn(x_1, x_0)))`
     """
     def reducer(ls: Iterable[float]):
-        nonlocal start # 不然有UnboundLocalError
+        # 在嵌套函数中对自由变量(外部函数的)进行赋值时需要使用nonlocal
+        # 只是读值时不需要
+        nonlocal start 
         for e in ls:
             start = fn(e, start) # start结果在右侧
         return start
