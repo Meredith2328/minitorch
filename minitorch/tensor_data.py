@@ -42,23 +42,8 @@ def index_to_position(index: Index, strides: Strides) -> int:
     Returns:
         Position in storage
     """
-
-    # fast indexing: 利用strides, 把元组形式的 index 转化为一维数组的下标
-    # 例如步长为(5, 1), 我们的storage有15个元素, 
-    # 那么传入index = (1, 0)时, 下标就应该是 5*1+1*0 (直观理解为dim1的5步走了1次)
-    # 传入index = (1, 2)时, 下标就应该是 5*1+1*2 (直观理解为dim1的5步走了1次, dim2的1步走了2次)
-
-    # position = index dot strides
-    # position: int = 0
-    # for i in range(len(index)):
-    #     position += index[i] * strides[i]
-    # return position
-
-    position = 0
-    for ind, strides in zip(index, strides):
-        position += ind * strides
-    return position
-
+    # 从多维数组的index和strides的视角, 到storage的position的视角.
+    return int(np.dot(index, strides))
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
     """
@@ -91,8 +76,6 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         sh = shape[i]
         out_index[i] = int(cur_pos % sh)
         cur_pos = cur_pos // sh
-
-
     # 在学习了stride之后可以有直觉的理解:
     # ordinal是向strides的各个方向走了index步得到的,
     # 那么对于"最精细"(strides最右侧)的小步子走了多少? (对最右侧shape的直接取模)
@@ -187,12 +170,12 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
-    layout = [1]
-    offset = 1
-    for s in reversed(shape):
-        layout.append(s * offset)
-        offset = s * offset
-    return tuple(reversed(layout[:-1]))
+    strides = []
+    stride = 1
+    for dim in reversed(shape):
+        strides.append(stride)
+        stride *= dim
+    return tuple(reversed(strides))
 
 
 class TensorData:
