@@ -43,7 +43,11 @@ def index_to_position(index: Index, strides: Strides) -> int:
         Position in storage
     """
     # 从多维数组的index和strides的视角, 到storage的position的视角.
-    return int(np.dot(index, strides))
+    # 这里不要使用 return int(np.dot(index, strides)) , 不然后面写numba过不了.
+    pos = 0
+    for i, s in zip(index, strides):
+        pos += i * s
+    return pos
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
     """
