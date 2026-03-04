@@ -409,14 +409,14 @@ def grad_check(f: Any, *vals: Tensor) -> None:
     out.sum().backward()
     err_msg = """
 
-Gradient check error for function %s.
+    Gradient check error for function %s.
 
-Input %s
+    Input %s
 
-Received derivative %f for argument %d and index %s,
-but was expecting derivative %f from central difference.
+    Received derivative %f for argument %d and index %s,
+    but was expecting derivative %f from central difference.
 
-"""
+    """
 
     for i, x in enumerate(vals):
         ind = x._tensor.sample()

@@ -106,16 +106,6 @@ def broadcast_index(
     # 即去掉最外层值为1的维度, 保留内层
     # eg2. big_shape = (2, 3), shape = (2, 1)
     # 则将维度为1处全部映射到0
-    # eg3. big_shape = (2, 4), shape = (2, ) # WRONG!
-    # 报错, 无法正常映射, 本函数不作检查, 默认传入的都合法
-
-    # for i in range(len(shape) - 1, -1, -1):
-    #     # big_index和index都从最右往左对齐
-    #     dimension = i + len(big_shape) - len(shape)
-    #     if big_shape[dimension] == 1 or shape[i] == 1:
-    #         out_index[i] = 0
-    #     else:
-    #         out_index[i] = big_index[dimension]
     for i, s in enumerate(shape):
         if s > 1:
             out_index[i] = big_index[i + (len(big_shape) - len(shape))]
@@ -137,21 +127,8 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     Raises:
         IndexingError : if cannot broadcast
     """
-    # shape: UserShape = ()
-    # if (len(shape1) < len(shape2)):
-    #     shape1 = (1,) * (len(shape2) - len(shape1)) + tuple(shape1)
-    # if (len(shape2) < len(shape1)):
-    #     shape2 = (1,) * (len(shape1) - len(shape2)) + tuple(shape2)
-    # for i in range(len(shape1)):
-    #     if (min(shape1[i], shape2[i]) == 1 or shape1[i] == shape2[i]):
-    #         shape += (max(shape1[i], shape2[i]),)
-    #     else:
-    #         raise IndexingError()
-    # return shape
-
     a, b = shape1, shape2
     m = max(len(a), len(b))
-    # print("m",m)
     c_rev = [0] * m
     a_rev = list(reversed(a))
     b_rev = list(reversed(b))
