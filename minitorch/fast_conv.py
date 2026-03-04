@@ -77,11 +77,54 @@ def _tensor_conv1d(
         and in_channels == in_channels_
         and out_channels == out_channels_
     )
-    s1 = input_strides
-    s2 = weight_strides
 
-    # TODO: Implement for Task 4.1.
-    raise NotImplementedError('Need to implement for Task 4.1')
+    # Numba prange for parallel execution
+    for i in prange(out_size):
+        # 计算输出索引
+        out_idx = np.zeros(3, dtype=np.int32)
+        to_index(i, out_shape, out_idx)
+        b = out_idx[0]
+        oc = out_idx[1]
+        w = out_idx[2]
+        
+        # 累加器
+        acc = 0.0
+        
+        # 遍历输入通道和卷积核
+        for ic in range(in_channels):
+            for k in range(kw):
+                if reverse:
+                    # 右对齐 (用于反向传播)
+                    input_w = w - k
+                else:
+                    # 左对齐 (用于前向传播)
+                    input_w = w + k - (kw - 1)
+                
+                # 边界检查
+                if 0 <= input_w < width:
+                    # 计算输入位置
+                    input_pos = (
+                        b * input_strides[0] +
+                        ic * input_strides[1] +
+                        input_w * input_strides[2]
+                    )
+                    
+                    # 计算权重位置
+                    weight_pos = (
+                        oc * weight_strides[0] +
+                        ic * weight_strides[1] +
+                        k * weight_strides[2]
+                    )
+                    
+                    acc += input[input_pos] * weight[weight_pos]
+        
+        # 写入输出
+        out_pos = (
+            b * out_strides[0] +
+            oc * out_strides[1] +
+            w * out_strides[2]
+        )
+        out[out_pos] = acc
 
 
 tensor_conv1d = njit(parallel=True)(_tensor_conv1d)
@@ -200,14 +243,65 @@ def _tensor_conv2d(
         and out_channels == out_channels_
     )
 
-    s1 = input_strides
-    s2 = weight_strides
-    # inners
-    s10, s11, s12, s13 = s1[0], s1[1], s1[2], s1[3]
-    s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
-
-    # TODO: Implement for Task 4.2.
-    raise NotImplementedError('Need to implement for Task 4.2')
+    # 预取步长以加速
+    s1_0, s1_1, s1_2, s1_3 = input_strides[0], input_strides[1], input_strides[2], input_strides[3]
+    s2_0, s2_1, s2_2, s2_3 = weight_strides[0], weight_strides[1], weight_strides[2], weight_strides[3]
+    s_out_0, s_out_1, s_out_2, s_out_3 = out_strides[0], out_strides[1], out_strides[2], out_strides[3]
+    
+    # Numba prange for parallel execution
+    for i in prange(out_size):
+        # 计算输出索引
+        out_idx = np.zeros(4, dtype=np.int32)
+        to_index(i, out_shape, out_idx)
+        b = out_idx[0]
+        oc = out_idx[1]
+        h = out_idx[2]
+        w = out_idx[3]
+        
+        # 累加器
+        acc = 0.0
+        
+        # 遍历输入通道和卷积核
+        for ic in range(in_channels):
+            for kh_i in range(kh):
+                for kw_i in range(kw):
+                    if reverse:
+                        # 右下对齐 (用于反向传播)
+                        input_h = h - kh_i
+                        input_w = w - kw_i
+                    else:
+                        # 左上对齐 (用于前向传播)
+                        input_h = h + kh_i - (kh - 1)
+                        input_w = w + kw_i - (kw - 1)
+                    
+                    # 边界检查
+                    if 0 <= input_h < height and 0 <= input_w < width:
+                        # 计算输入位置
+                        input_pos = (
+                            b * s1_0 +
+                            ic * s1_1 +
+                            input_h * s1_2 +
+                            input_w * s1_3
+                        )
+                        
+                        # 计算权重位置
+                        weight_pos = (
+                            oc * s2_0 +
+                            ic * s2_1 +
+                            kh_i * s2_2 +
+                            kw_i * s2_3
+                        )
+                        
+                        acc += input[input_pos] * weight[weight_pos]
+        
+        # 写入输出
+        out_pos = (
+            b * s_out_0 +
+            oc * s_out_1 +
+            h * s_out_2 +
+            w * s_out_3
+        )
+        out[out_pos] = acc
 
 
 tensor_conv2d = njit(parallel=True, fastmath=True)(_tensor_conv2d)
