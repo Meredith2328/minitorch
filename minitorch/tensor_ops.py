@@ -20,11 +20,16 @@ if TYPE_CHECKING:
 
 
 class MapProto(Protocol):
+    # = ...: 必须有默认值
+    # , /: 前面的参数必须按照顺序而非关键词传入
+    # ...: 这里应有函数定义
+    # 总之, 一句话概括, 这是一个协议，符合它的对象需要实现一个 __call__ 方法
     def __call__(self, x: Tensor, out: Optional[Tensor] = ..., /) -> Tensor:
         ...
 
 
 class TensorOps:
+    # TensorOps的抽象类, 实现它的包括当前的SimpleOps, 以后numba的FastOps和CudaOps
     @staticmethod
     def map(fn: Callable[[float], float]) -> MapProto:
         pass
@@ -264,13 +269,9 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        # 我怎么感觉这一步工作量有点大,
-        # 理解下来先要把shape扩展(包括1扩展和添1扩展)
-        # 然后对于每次扩展都要把函数映射多次
-
-        # 实现: 对out_size这么多个pos, 
-        # 每个pos唯一对应一个映射, 执行一次fn
-        # 每个映射的 in_index 和 out_index 均由pos得到
+        # 我们可以直接通过i生成全部的out_index
+        # 然后如果out_shape大于in_shape, 则可以通过broadcast_index
+        # 获得每个out_index唯一对应的in_index
         out_size = 1
         for dim in out_shape:
             out_size *= dim
@@ -383,7 +384,7 @@ def tensor_reduce(
         #         start = fn(e, start) # start结果在右侧
         #     return start
 
-        # ps. out不大于a, 所以不会重复执行
+        # ps. 不会重复执行, 因为out_shape[reduce_dim] = 1
 
         out_size = 1
         for dim in out_shape:
