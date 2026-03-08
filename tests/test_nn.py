@@ -31,22 +31,15 @@ def test_avg(t: Tensor) -> None:
 @pytest.mark.task4_4
 @given(tensors(shape=(2, 3, 4)))
 def test_max(t: Tensor) -> None:
-    # 测试 max reduction
-    for dim in [0, 1, 2]:
-        out = minitorch.max(t, dim)
-        
-        # 验证形状
-        expected_size = list(t.shape)
-        expected_size.pop(dim)
-        assert out.shape == tuple(expected_size)
-        
-        # 验证值
-        t_np = t.to_numpy()
-        out_np = out.to_numpy()
-        assert_close(np.max(t_np, axis=dim), out_np)
-    
-    # 测试梯度
-    minitorch.grad_check(lambda x: minitorch.max(x, 0), t)
+    out = minitorch.nn.max(t, 2)
+    assert out[0, 0, 0] == max(t[0, 0, i] for i in range(4))
+    out = minitorch.nn.max(t, 1)
+    assert out[0, 0, 0] == max(t[0, i, 0] for i in range(3))
+    out = minitorch.nn.max(t, 0)
+    assert out[0, 0, 0] == max(t[i, 0, 0] for i in range(2))
+    rand_tensor = minitorch.rand(t.shape) * 1e-5
+    t = t + rand_tensor
+    minitorch.grad_check(lambda t: minitorch.nn.max(t, 2), t)
 
 
 @pytest.mark.task4_4

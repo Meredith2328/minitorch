@@ -1,20 +1,13 @@
-from typing import Tuple
-
 import numpy as np
-from numba import njit, prange
-
-from .autodiff import Context
-from .tensor import Tensor
 from .tensor_data import (
-    MAX_DIMS,
-    Index,
-    Shape,
-    Strides,
-    broadcast_index,
-    index_to_position,
     to_index,
+    index_to_position,
+    broadcast_index,
+    MAX_DIMS,
 )
 from .tensor_functions import Function
+from numba import njit, prange
+
 
 # This code will JIT compile fast versions your tensor_data functions.
 # If you get an error, read the docs for NUMBA as to what is allowed
@@ -24,19 +17,20 @@ index_to_position = njit(inline="always")(index_to_position)
 broadcast_index = njit(inline="always")(broadcast_index)
 
 
-def _tensor_conv1d(
-    out: Tensor,
-    out_shape: Shape,
-    out_strides: Strides,
-    out_size: int,
-    input: Tensor,
-    input_shape: Shape,
-    input_strides: Strides,
-    weight: Tensor,
-    weight_shape: Shape,
-    weight_strides: Strides,
-    reverse: bool,
-) -> None:
+@njit(parallel=True)
+def tensor_conv1d(
+    out,
+    out_shape,
+    out_strides,
+    out_size,
+    input,
+    input_shape,
+    input_strides,
+    weight,
+    weight_shape,
+    weight_strides,
+    reverse,
+):
     """
     1D Convolution implementation.
 
@@ -56,16 +50,16 @@ def _tensor_conv1d(
     (See diagrams)
 
     Args:
-        out (Storage): storage for `out` tensor.
-        out_shape (Shape): shape for `out` tensor.
-        out_strides (Strides): strides for `out` tensor.
+        out (array): storage for `out` tensor.
+        out_shape (array): shape for `out` tensor.
+        out_strides (array): strides for `out` tensor.
         out_size (int): size of the `out` tensor.
-        input (Storage): storage for `input` tensor.
-        input_shape (Shape): shape for `input` tensor.
-        input_strides (Strides): strides for `input` tensor.
-        weight (Storage): storage for `input` tensor.
-        weight_shape (Shape): shape for `input` tensor.
-        weight_strides (Strides): strides for `input` tensor.
+        input (array): storage for `input` tensor.
+        input_shape (array): shape for `input` tensor.
+        input_strides (array): strides for `input` tensor.
+        weight (array): storage for `input` tensor.
+        weight_shape (array): shape for `input` tensor.
+        weight_strides (array): strides for `input` tensor.
         reverse (bool): anchor weight at left or right
     """
     batch_, out_channels, out_width = out_shape
@@ -77,72 +71,59 @@ def _tensor_conv1d(
         and in_channels == in_channels_
         and out_channels == out_channels_
     )
-
-    # Numba prange for parallel execution
-    for i in prange(out_size):
-        # 计算输出索引
-        out_idx = np.zeros(3, dtype=np.int32)
-        to_index(i, out_shape, out_idx)
-        b = out_idx[0]
-        oc = out_idx[1]
-        w = out_idx[2]
-        
-        # 累加器
-        acc = 0.0
-        
-        # 遍历输入通道和卷积核
-        for ic in range(in_channels):
-            for k in range(kw):
+    s1 = input_strides
+    s2 = weight_strides
+    for out_i in prange(out_size):
+        out_index = np.zeros(3, dtype=np.int32)
+        to_index(out_i, out_shape, out_index)
+        current_batch, current_out_channels, current_width = out_index
+        val = 0
+        for current_in_channels in prange(in_channels):
+            for current_kw in range(kw):
+                i = current_kw
                 if reverse:
-                    # 右对齐 (用于反向传播)
-                    input_w = w - k
+                    i = kw - current_kw - 1
+                w = weight[
+                    s2[0] * current_out_channels
+                    + s2[1] * current_in_channels
+                    + s2[2] * i
+                ]
+                inc = 0
+                if reverse:
+                    if current_width - i >= 0:
+                        inc = input[
+                            current_batch * s1[0]
+                            + current_in_channels * s1[1]
+                            + (current_width - i) * s1[2]
+                        ]
                 else:
-                    # 左对齐 (用于前向传播)
-                    input_w = w + k - (kw - 1)
-                
-                # 边界检查
-                if 0 <= input_w < width:
-                    # 计算输入位置
-                    input_pos = (
-                        b * input_strides[0] +
-                        ic * input_strides[1] +
-                        input_w * input_strides[2]
-                    )
-                    
-                    # 计算权重位置
-                    weight_pos = (
-                        oc * weight_strides[0] +
-                        ic * weight_strides[1] +
-                        k * weight_strides[2]
-                    )
-                    
-                    acc += input[input_pos] * weight[weight_pos]
-        
-        # 写入输出
-        out_pos = (
-            b * out_strides[0] +
-            oc * out_strides[1] +
-            w * out_strides[2]
-        )
-        out[out_pos] = acc
-
-
-tensor_conv1d = njit(parallel=True)(_tensor_conv1d)
+                    if i + current_width < width:
+                        inc = input[
+                            current_batch * s1[0]
+                            + current_in_channels * s1[1]
+                            + (i + current_width) * s1[2]
+                        ]
+                val += w * inc
+        out[
+            current_batch * out_strides[0]
+            + current_out_channels * out_strides[1]
+            + current_width * out_strides[2]
+        ] = val
 
 
 class Conv1dFun(Function):
     @staticmethod
-    def forward(ctx: Context, input: Tensor, weight: Tensor) -> Tensor:
+    def forward(ctx, input, weight):
         """
         Compute a 1D Convolution
 
         Args:
             ctx : Context
-            input : batch x in_channel x h x w
-            weight : out_channel x in_channel x kh x kw
+            input (:class:`Tensor`) : batch x in_channel x h x w
+            weight (:class:`Tensor`) : out_channel x in_channel x kh x kw
 
         Returns:
-            batch x out_channel x h x w
+            (:class:`Tensor`) : batch x out_channel x h x w
         """
         ctx.save_for_backward(input, weight)
         batch, in_channels, w = input.shape
@@ -157,7 +138,7 @@ class Conv1dFun(Function):
         return output
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+    def backward(ctx, grad_output):
         input, weight = ctx.saved_values
         batch, in_channels, w = input.shape
         out_channels, in_channels, kw = weight.shape
@@ -188,19 +169,20 @@ class Conv1dFun(Function):
 conv1d = Conv1dFun.apply
 
 
-def _tensor_conv2d(
-    out: Tensor,
-    out_shape: Shape,
-    out_strides: Strides,
-    out_size: int,
-    input: Tensor,
-    input_shape: Shape,
-    input_strides: Strides,
-    weight: Tensor,
-    weight_shape: Shape,
-    weight_strides: Strides,
-    reverse: bool,
-) -> None:
+@njit(parallel=True, fastmath=True)
+def tensor_conv2d(
+    out,
+    out_shape,
+    out_strides,
+    out_size,
+    input,
+    input_shape,
+    input_strides,
+    weight,
+    weight_shape,
+    weight_strides,
+    reverse,
+):
     """
     2D Convolution implementation.
 
@@ -221,16 +203,16 @@ def _tensor_conv2d(
 
 
     Args:
-        out (Storage): storage for `out` tensor.
-        out_shape (Shape): shape for `out` tensor.
-        out_strides (Strides): strides for `out` tensor.
+        out (array): storage for `out` tensor.
+        out_shape (array): shape for `out` tensor.
+        out_strides (array): strides for `out` tensor.
         out_size (int): size of the `out` tensor.
-        input (Storage): storage for `input` tensor.
-        input_shape (Shape): shape for `input` tensor.
-        input_strides (Strides): strides for `input` tensor.
-        weight (Storage): storage for `input` tensor.
-        weight_shape (Shape): shape for `input` tensor.
-        weight_strides (Strides): strides for `input` tensor.
+        input (array): storage for `input` tensor.
+        input_shape (array): shape for `input` tensor.
+        input_strides (array): strides for `input` tensor.
+        weight (array): storage for `input` tensor.
+        weight_shape (array): shape for `input` tensor.
+        weight_strides (array): strides for `input` tensor.
         reverse (bool): anchor weight at top-left or bottom-right
     """
     batch_, out_channels, _, _ = out_shape
@@ -243,80 +225,67 @@ def _tensor_conv2d(
         and out_channels == out_channels_
     )
 
-    # 预取步长以加速
-    s1_0, s1_1, s1_2, s1_3 = input_strides[0], input_strides[1], input_strides[2], input_strides[3]
-    s2_0, s2_1, s2_2, s2_3 = weight_strides[0], weight_strides[1], weight_strides[2], weight_strides[3]
-    s_out_0, s_out_1, s_out_2, s_out_3 = out_strides[0], out_strides[1], out_strides[2], out_strides[3]
-    
-    # Numba prange for parallel execution
-    for i in prange(out_size):
-        # 计算输出索引
-        out_idx = np.zeros(4, dtype=np.int32)
-        to_index(i, out_shape, out_idx)
-        b = out_idx[0]
-        oc = out_idx[1]
-        h = out_idx[2]
-        w = out_idx[3]
-        
-        # 累加器
-        acc = 0.0
-        
-        # 遍历输入通道和卷积核
-        for ic in range(in_channels):
-            for kh_i in range(kh):
-                for kw_i in range(kw):
+    s1 = input_strides
+    s2 = weight_strides
+    # inners
+    s10, s11, s12, s13 = s1[0], s1[1], s1[2], s1[3]
+    s20, s21, s22, s23 = s2[0], s2[1], s2[2], s2[3]
+
+    for out_i in prange(out_size):
+        out_index = np.zeros(4, dtype=np.int32)
+        to_index(out_i, out_shape, out_index)
+        current_batch, current_out_channels, current_height, current_width = out_index
+        val = 0
+        for current_in_channels in prange(in_channels):
+            for current_kh in range(kh):
+                for current_kw in range(kw):
+                    i = current_kh
+                    j = current_kw
                     if reverse:
-                        # 右下对齐 (用于反向传播)
-                        input_h = h - kh_i
-                        input_w = w - kw_i
+                        j = kw - current_kw - 1
+                        i = kh - current_kh - 1
+                    w = weight[
+                        s20 * current_out_channels
+                        + s21 * current_in_channels
+                        + s22 * i
+                        + s23 * j
+                    ]
+                    inc = 0
+                    if reverse:
+                        if current_height - i >= 0 and current_width - j >= 0:
+                            inc = input[
+                                current_batch * s10
+                                + current_in_channels * s11
+                                + (current_height - i) * s12
+                                + (current_width - j) * s13
+                            ]
                     else:
-                        # 左上对齐 (用于前向传播)
-                        input_h = h + kh_i - (kh - 1)
-                        input_w = w + kw_i - (kw - 1)
-                    
-                    # 边界检查
-                    if 0 <= input_h < height and 0 <= input_w < width:
-                        # 计算输入位置
-                        input_pos = (
-                            b * s1_0 +
-                            ic * s1_1 +
-                            input_h * s1_2 +
-                            input_w * s1_3
-                        )
-                        
-                        # 计算权重位置
-                        weight_pos = (
-                            oc * s2_0 +
-                            ic * s2_1 +
-                            kh_i * s2_2 +
-                            kw_i * s2_3
-                        )
-                        
-                        acc += input[input_pos] * weight[weight_pos]
-        
-        # 写入输出
-        out_pos = (
-            b * s_out_0 +
-            oc * s_out_1 +
-            h * s_out_2 +
-            w * s_out_3
-        )
-        out[out_pos] = acc
-
-
-tensor_conv2d = njit(parallel=True, fastmath=True)(_tensor_conv2d)
+                        if i + current_height < height and j + current_width < width:
+                            inc = input[
+                                current_batch * s10
+                                + current_in_channels * s11
+                                + (i + current_height) * s12
+                                + (j + current_width) * s13
+                            ]
+                    val += w * inc
+        out[
+            current_batch * out_strides[0]
+            + current_out_channels * out_strides[1]
+            + current_height * out_strides[2]
+            + current_width * out_strides[3]
+        ] = val
 
 
 class Conv2dFun(Function):
     @staticmethod
-    def forward(ctx: Context, input: Tensor, weight: Tensor) -> Tensor:
+    def forward(ctx, input, weight):
         """
         Compute a 2D Convolution
 
         Args:
             ctx : Context
-            input : batch x in_channel x h x w
-            weight  : out_channel x in_channel x kh x kw
+            input (:class:`Tensor`) : batch x in_channel x h x w
+            weight (:class:`Tensor`) : out_channel x in_channel x kh x kw
 
         Returns:
             (:class:`Tensor`) : batch x out_channel x h x w
@@ -332,7 +301,7 @@ class Conv2dFun(Function):
         return output
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+    def backward(ctx, grad_output):
         input, weight = ctx.saved_values
         batch, in_channels, h, w = input.shape
         out_channels, in_channels, kh, kw = weight.shape
