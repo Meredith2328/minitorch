@@ -38,3 +38,21 @@ pip install streamlit\==1.26.0
 
 之后做到Efficiency(Task3那些)要用CUDA，我本地机CUDA==12.6，所以参考了pytorch官网的指令在环境里装gpu的pytorch：
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+
+## Modern Training Entrypoints
+
+The original scripts under `project/` keep the coursework-oriented `minitorch`
+training loops. If you want a more standard workflow, use the standalone
+training scripts under `scripts/` instead:
+
+```bash
+pip install -r requirements-modern.txt
+
+python scripts/train_sentiment_hf.py --output-dir outputs/sst2-hf
+python scripts/train_mnist_torch.py --data-dir project/data --output-dir outputs/mnist-torch
+```
+
+These scripts use:
+
+- `scripts/train_sentiment_hf.py`: Hugging Face `Trainer` with a pretrained Transformer on SST-2.
+- `scripts/train_mnist_torch.py`: PyTorch `Dataset` / `DataLoader` / `AdamW` workflow on MNIST.
