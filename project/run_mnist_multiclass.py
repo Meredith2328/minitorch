@@ -78,13 +78,14 @@ class Network(minitorch.Module):
 
     def forward(self, x):
         # ASSIGN4.5
+        batch = x.shape[0]
         x = self.conv1(x).relu()
         self.mid = x
         x = self.conv2(x).relu()
         self.out = x
         x = minitorch.avgpool2d(x, (4, 4))
-        x = self.linear1(x.view(BATCH, 392)).relu()
-        x = minitorch.dropout(x, 0.25, self.mode == "eval")
+        x = self.linear1(x.view(batch, 392)).relu()
+        x = minitorch.dropout(x, 0.25, not self.training)
         x = self.linear2(x)
         x = minitorch.logsoftmax(x, dim=1)
         return x
@@ -112,7 +113,8 @@ class ImageTrain:
         self.model = Network()
 
     def run_one(self, x):
-        return self.model.forward(minitorch.tensor([x], backend=BACKEND))
+        sample = minitorch.tensor([x], backend=BACKEND).view(1, 1, H, W)
+        return self.model.forward(sample)
 
     def train(
         self, data_train, data_val, learning_rate, max_epochs=500, log_fn=default_log_fn
