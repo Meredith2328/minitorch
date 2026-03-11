@@ -1,6 +1,10 @@
 # MiniTorch
 
+My Detailed Notes: [minitorch | 十派的玩具箱](https://meredith2328.github.io/post/minitorch/)
+
 A compact deep learning systems project based on the MiniTorch teaching framework. This repository focuses on implementing core autodiff and tensor operators, then using them to train CNN models for sentiment classification and image classification.
+
+![tests_passed](./docs/images/tests_passed.png)
 
 ## Features
 
@@ -113,23 +117,7 @@ python scripts/train_mnist_torch.py \
 streamlit run project/app.py
 ```
 
-## Result Figures
-
-Put result images under `docs/images/`. Suggested filenames:
-
-- `docs/images/framework-overview.png`
-- `docs/images/sst2-training-curves.png`
-- `docs/images/mnist-training-curves.png`
-- `docs/images/final-metrics-summary.png`
-
-Example markdown after you add the images:
-
-```md
-![Framework Overview](docs/images/framework-overview.png)
-![SST-2 Training Curves](docs/images/sst2-training-curves.png)
-![MNIST Training Curves](docs/images/mnist-training-curves.png)
-![Final Metrics Summary](docs/images/final-metrics-summary.png)
-```
+![image-20260311172559784](./docs/images/train.png)
 
 ## Resume Summary
 
